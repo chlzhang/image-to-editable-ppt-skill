@@ -6,6 +6,8 @@ Release notes are generated from this file. Keep changelog entries in English.
 
 ### Fixes
 
+- Resolve asset-sheet inputs from recorded jobs, verify processing outputs before marking jobs processed, and keep sheet/report/asset writes inside the owning page directory.
+
 - Forward the requested DPI when preparing legacy PPT inputs, and reject image-based PPTX slides with extra objects, transforms, or unsupported picture styling instead of silently dropping visible content.
 
 - Preserve run state with atomic JSON replacement and bounded run-level locking, recover aggregate status from committed page jobs, and reject preparation into an existing nonempty run directory.

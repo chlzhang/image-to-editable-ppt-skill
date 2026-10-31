@@ -229,6 +229,8 @@ Use a new output directory when starting another conversion. `prepare` rejects a
 
 ## Scope
 
+Asset-sheet outputs stay inside their page directory; external sheets and region files are read-only inputs. Missing inputs or required outputs, or an empty split, fail without marking the asset job processed. With `--skip-split`, only the alpha output is required.
+
 - This skill reconstructs input pages; it is not a from-scratch deck content generator.
 - Single-page or single-image input can be rebuilt locally by the main agent; multi-page input is rebuilt in parallel through page workers/subagents.
 - Complex visual assets need either the built-in image tool or the CLI fallback. If neither can produce a compliant asset, the page fails validation instead of substituting approximate shapes.

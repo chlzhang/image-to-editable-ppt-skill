@@ -266,6 +266,8 @@ editppt image process-sheet pages/page_001 \
 
 When `--job-id` is present, the default chroma image, alpha image, and split report are written under `assets/` with that job id in the filename. This keeps multiple asset-sheet jobs on one page isolated. Explicit `--chroma`, `--alpha`, and `--split-manifest` values still override those defaults; calls without `--job-id` retain the legacy page-level filenames.
 
+Omitting `--asset-sheet-source` selects the imported job's `output`, or its recorded `alpha` with `--skip-chroma`. A job without either needs an explicit source; explicit-source calls may still create a new job id. Output paths must remain inside the page directory, including absolute paths; external source/region files remain read-only. Missing input, missing outputs, or an empty split fails instead of recording completion. `--skip-split` runs only the alpha step.
+
 `--regions` selects whole-object region splitting; omit it for legacy connected-component splitting. `--skip-chroma` requires genuine transparency; `--force-chroma` permits replacing the Alpha output but never re-keys a transparent source. Region and report fields are defined in `manifest-schema.md`, "Asset sheet regions and split reports".
 
 For opaque sheets, the asset sheet key color is determined by the generation prompt; `process-sheet` samples the key color from the image edge. Key-color selection and when to regenerate a sheet with a different key color are defined in `page-decision-tree.md` section 2.2.

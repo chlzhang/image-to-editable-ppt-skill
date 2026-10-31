@@ -431,6 +431,8 @@ Each imported job records at least the selected output and the backend that actu
 
 State and provenance record rules are described in the State Principles section of `SKILL.md` and in the asset processing examples in `cli-helper.md`.
 
+For processed jobs, `alpha`, `assets_dir`, and `split_manifest` retain their configured output paths. `processed` requires a readable nonempty alpha image and, unless splitting was explicitly skipped, a readable report with at least one existing image asset. With `--skip-split`, configured split paths need not exist. Processing failures preserve the prior job record; processing uses page-local staging before publishing verified files. This is not a multi-file transaction across output publication and the job-record write.
+
 ## Asset sheet regions and split reports
 
 `asset-regions.json` is authored by the page reconstructor after inspecting the generated sheet. It contains `regions`, a nonempty array of `{ "name": "icon-a", "box": [x, y, width, height] }`. Names are unique safe filenames (PNG extension optional); coordinates are integer pixels of the **generated sheet**, not `source.png`. Boxes must have positive size, be inside the image, and not overlap. Each region must contain foreground surrounded by transparent margins; collectively regions cover all nonzero Alpha except the faint-residue allowance below. Empty grid slots are omitted.

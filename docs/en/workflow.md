@@ -68,6 +68,8 @@ Use a new output directory when starting another conversion. `prepare` rejects a
 
 ## Limitations
 
+Asset-sheet outputs stay inside their page directory; external sheets and region files are read-only inputs. Missing inputs or required outputs, or an empty split, fail without marking the asset job processed. With `--skip-split`, only the alpha output is required.
+
 - This skill reconstructs an input page as editable objects; it does not generate a new presentation from scratch. That is the responsibility of [codex-ppt-skill](https://github.com/ningzimu/codex-ppt-skill).
 - Complex visual elements such as photos, illustrations, textures, and hand-drawn decoration can usually be moved only as separate image assets; their internal objects are not guaranteed to be editable.
 - Native tables do not yet support diagonal headers or images embedded in cells. Unclear text, rows, columns, or merges are checked against the source and OCR first; unresolved details are reported without guessing content or structure. Charts and flowcharts continue to use editable structural objects.

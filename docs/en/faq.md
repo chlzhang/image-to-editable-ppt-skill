@@ -51,3 +51,7 @@ Ask your agent to update it by sending: “Update the image-to-editable-ppt skil
 ## What Should I Do If a Conversion Stops Partway Through?
 
 First check whether the permission mode is waiting for your approval (see the Full Access question above). Per-page dispatch and completion state are recorded in `page_jobs.json` and `run_state.json` inside the task directory. Ask the AI to inspect the current run state and continue any unfinished pages.
+
+## Why Does Asset-Sheet Processing Fail?
+
+Asset-sheet outputs stay inside their page directory; external sheets and region files are read-only inputs. Missing inputs or required outputs, or an empty split, fail without marking the asset job processed. With `--skip-split`, only the alpha output is required.
