@@ -41,6 +41,7 @@ output/image-to-editable-ppt/{job-id}/        # 单次转换任务目录
 ├── page_jobs.json                            # 每页分派和完成状态
 ├── run_state.json                            # 当前任务的整体运行状态
 ├── notes_manifest.json                       # PPTX 页面备注提取与映射记录
+├── .editppt.lock                             # 任务状态互斥锁（保留此文件）
 ├── final/                                    # 最终输出目录
 │   ├── {origin}_edited.pptx                  # 最终可编辑 PPTX
 │   ├── {origin}_edited.assembly.json         # 已验收页面的组装清单
@@ -62,6 +63,8 @@ output/image-to-editable-ppt/{job-id}/        # 单次转换任务目录
     └── page_002/                             # 后续页面工作目录
         └── ...
 ```
+
+重新开始转换时请使用新的输出目录；`prepare` 会拒绝已有非空任务目录，避免覆盖源图、活动任务和已验收产物。命令等待状态锁超时后会失败，不会替换正在运行的任务。
 
 ## 能力边界
 

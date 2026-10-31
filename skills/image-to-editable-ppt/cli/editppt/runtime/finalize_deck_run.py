@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from deck_run_state import recover_run_state, run_lock
+
 from deck_run_state import load_deck, load_jobs, now_iso, resolve_inside, run_dir_from_target, save_deck, save_jobs, set_run_status, sha256_file, write_json
 
 
@@ -94,6 +96,12 @@ def main():
     args = parser.parse_args()
 
     run_dir = run_dir_from_target(args.run)
+    with run_lock(run_dir):
+        recover_run_state(run_dir)
+        execute(run_dir, args)
+
+
+def execute(run_dir, args):
     deck = load_deck(run_dir)
     jobs = load_jobs(run_dir)
     assert_pages_ready(run_dir, jobs)

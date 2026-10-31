@@ -113,6 +113,8 @@ editppt prepare input.pdf
 editppt prepare input.png --image-backend builtin-imagegen
 ```
 
+`--job-dir <path>` accepts a new or empty directory and rejects nonempty directories before copying inputs; default run directories are reserved uniquely. Run mutation commands wait up to 10 seconds for the run lock, then fail if it remains busy. State recovery policy is in `SKILL.md` "State Principles".
+
 Purpose: normalize a single image, multiple images, a PDF, or an image-based PPTX into a run directory and generate `deck_manifest.json`, `page_jobs.json`, `notes_manifest.json`, plus per-page `pages/page_NNN/source.png`, `page_request.json`, and text hints. `--image-backend` records the requested run/page contract; selection policy lives in `SKILL.md` subsection "Image Backend Selection".
 
 When a PaddleOCR token is configured, `prepare` may submit the input pages to PaddleOCR for content-aware text hints. In a sandboxed or approval-gated environment, request network approval up front for this command instead of accepting a DNS/sandbox failure followed by lower-quality `builtin-ink` fallback; see `SKILL.md` Phase 1 for the approval-rejection policy.

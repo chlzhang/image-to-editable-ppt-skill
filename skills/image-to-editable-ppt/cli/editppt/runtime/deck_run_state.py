@@ -1,5 +1,9 @@
 import hashlib
 import json
+import os
+import tempfile
+import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -24,8 +28,54 @@ def read_json(path, default=None):
 
 def write_json(path, data):
     path = Path(path)
+    payload = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+@contextmanager
+def run_lock(run_dir: Path, timeout: float = 10.0):
+    """Serialize a whole run mutation; the OS releases the lock on process exit."""
+    path = Path(run_dir) / ".editppt.lock"
+    deadline = time.monotonic() + timeout
+    with path.open("a+b") as handle:
+        # msvcrt locks one byte. Never unlink this file: waiters must share its inode.
+        if os.fstat(handle.fileno()).st_size == 0:
+            handle.write(b"\0")
+            handle.flush()
+        while True:
+            try:
+                handle.seek(0)
+                if os.name == "nt":
+                    import msvcrt
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError as exc:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(f"Timed out waiting for run lock: {path}") from exc
+                time.sleep(min(0.05, max(0, deadline - time.monotonic())))
+        try:
+            yield
+        finally:
+            handle.seek(0)
+            if os.name == "nt":
+                import msvcrt
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 def sha256_file(path):
@@ -74,7 +124,29 @@ def load_jobs(run_dir):
 
 
 def save_jobs(run_dir, jobs):
+    update_jobs_run_status(jobs)
     write_json(page_jobs_path(run_dir), jobs)
+    # page_jobs is committed first; a later command can recover a stale run_state.
+    sync_run_status_from_jobs(run_dir, jobs)
+
+
+def sync_run_status_from_jobs(run_dir, jobs):
+    current = load_run_state(run_dir).get("status")
+    target = jobs["run_status"]
+    if target == "complete":
+        # Accepted pages do not prove the latest rebuild/validation/summary succeeded.
+        # Only finalize may create the final complete marker after all delivery writes.
+        target = current if current in {"complete", "deck_built", "deck_validated"} else "pages_recorded"
+    if current != target:
+        set_run_status(run_dir, target, "reconciled from page jobs")
+
+
+def recover_run_state(run_dir):
+    """Under run_lock, repair an interrupted aggregate update from committed jobs."""
+    if page_jobs_path(run_dir).exists():
+        jobs = load_jobs(run_dir)
+        update_jobs_run_status(jobs)
+        sync_run_status_from_jobs(run_dir, jobs)
 
 
 def load_run_state(run_dir):
@@ -173,6 +245,7 @@ def dispatch_slots_available(jobs):
 
 def update_jobs_run_status(jobs):
     pages = jobs.get("pages", [])
+    jobs["run_status"] = "inputs_prepared"
     if pages and all(page.get("status") in {"dispatched", "recorded", "accepted"} for page in pages):
         jobs["run_status"] = "pages_dispatched"
     if pages and all(page.get("status") in {"recorded", "accepted"} for page in pages):

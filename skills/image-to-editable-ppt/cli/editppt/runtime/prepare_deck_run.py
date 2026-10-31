@@ -5,7 +5,7 @@ from pathlib import Path
 from PIL import Image
 
 from deck_run_state import now_iso, read_json, rel_to_run, save_deck, set_run_status, sha256_file, write_json
-from deck_run_state import DEFAULT_MAX_CONCURRENT_PAGES
+from deck_run_state import DEFAULT_MAX_CONCURRENT_PAGES, run_lock
 from _input_normalization import normalize_inputs
 
 
@@ -195,7 +195,8 @@ def main():
     run_dir = deck_path.parent
     if not (run_dir / "pages").exists():
         raise SystemExit(f"Input normalization did not create pages/: {run_dir}")
-    deck = upgrade_deck_manifest(deck_path, args.max_concurrent_pages)
+    with run_lock(run_dir):
+        deck = upgrade_deck_manifest(deck_path, args.max_concurrent_pages)
     print(deck_path)
     print(f"run_id={deck['run_id']}")
     print(f"pages={deck['page_count']}")

@@ -1,6 +1,5 @@
 import hashlib
 import io
-import json
 import posixpath
 import shutil
 import subprocess
@@ -11,6 +10,8 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from PIL import Image
+
+from deck_run_state import run_lock, write_json
 
 
 IMG_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tif", ".tiff"}
@@ -284,7 +285,27 @@ def default_output_name(input_paths):
 
 def normalize_inputs(inputs, out_root="output/image-to-editable-ppt", job_dir=None, dpi=180):
     input_paths = [Path(path).resolve() for path in inputs]
-    job_dir = Path(job_dir).resolve() if job_dir else default_job_dir(out_root, input_paths).resolve()
+    if job_dir is not None:
+        job_dir = Path(job_dir).resolve()
+        job_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        candidate = default_job_dir(out_root, input_paths).resolve()
+        candidate.parent.mkdir(parents=True, exist_ok=True)
+        counter = 0
+        while True:
+            job_dir = candidate if counter == 0 else candidate.with_name(f"{candidate.name}-{counter}")
+            try:
+                job_dir.mkdir()
+                break
+            except FileExistsError:
+                counter += 1
+    with run_lock(job_dir):
+        if any(path.name != ".editppt.lock" for path in job_dir.iterdir()):
+            raise FileExistsError(f"Run directory is not empty; use a new --job-dir: {job_dir}")
+        return _normalize_inputs_in_dir(input_paths, job_dir, dpi)
+
+
+def _normalize_inputs_in_dir(input_paths, job_dir, dpi):
     input_dir = job_dir / "input"
     pages_dir = job_dir / "pages"
     input_dir.mkdir(parents=True, exist_ok=True)
@@ -338,7 +359,7 @@ def normalize_inputs(inputs, out_root="output/image-to-editable-ppt", job_dir=No
 
     notes_manifest_path = job_dir / "notes_manifest.json"
     notes_manifest = {"source": copied[0].relative_to(job_dir).as_posix() if len(copied) == 1 else None, "notes": notes}
-    notes_manifest_path.write_text(json.dumps(notes_manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_json(notes_manifest_path, notes_manifest)
 
     deck_manifest = {
         "input_type": input_type,
@@ -351,5 +372,5 @@ def normalize_inputs(inputs, out_root="output/image-to-editable-ppt", job_dir=No
         "validation": "validation.json",
     }
     deck_manifest_path = job_dir / "deck_manifest.json"
-    deck_manifest_path.write_text(json.dumps(deck_manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_json(deck_manifest_path, deck_manifest)
     return deck_manifest_path

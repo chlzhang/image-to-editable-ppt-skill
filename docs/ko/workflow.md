@@ -41,6 +41,7 @@ output/image-to-editable-ppt/{job-id}/        # 단일 변환 작업 디렉터�
 ├── page_jobs.json                            # 페이지별 분배 및 완료 상태
 ├── run_state.json                            # 현재 작업의 전체 실행 상태
 ├── notes_manifest.json                       # PPTX 페이지 노트 추출 및 매핑 기록
+├── .editppt.lock                             # 작업 상태 잠금(파일 유지)
 ├── final/                                    # 최종 출력 디렉터리
 │   ├── {origin}_edited.pptx                  # 최종 편집 가능 PPTX
 │   ├── {origin}_edited.assembly.json         # 기록된 페이지의 조립 매니페스트
@@ -62,6 +63,8 @@ output/image-to-editable-ppt/{job-id}/        # 단일 변환 작업 디렉터�
     └── page_002/                             # 이후 페이지 작업 디렉터리
         └── ...
 ```
+
+다시 변환을 시작할 때는 새 출력 디렉터리를 사용하세요. `prepare`는 원본 이미지, 실행 중인 작업, 검증된 산출물을 보존하기 위해 비어 있지 않은 기존 작업 디렉터리를 거부합니다. 상태 잠금 대기 시간이 초과되면 실행 중인 작업을 교체하지 않고 명령이 실패합니다.
 
 ## 기능 범위
 

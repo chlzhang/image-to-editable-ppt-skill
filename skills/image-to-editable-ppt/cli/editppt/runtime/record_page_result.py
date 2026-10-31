@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from deck_run_state import recover_run_state, run_lock
+
 from deck_run_state import (
     find_page,
     inside_or_missing,
@@ -66,6 +68,12 @@ def main():
     args = parser.parse_args()
 
     run_dir = run_dir_from_target(args.run)
+    with run_lock(run_dir):
+        recover_run_state(run_dir)
+        execute(run_dir, args)
+
+
+def execute(run_dir, args):
     jobs = load_jobs(run_dir)
     page = find_page(jobs, args.page)
     if page.get("status") == "dispatched":

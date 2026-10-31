@@ -200,6 +200,7 @@ output/image-to-editable-ppt/{job-id}/        # One conversion job folder
 ├── page_jobs.json                            # Per-page dispatch and completion state
 ├── run_state.json                            # Overall job state
 ├── notes_manifest.json                       # PPTX speaker-note extraction and mapping record
+├── .editppt.lock                             # Run state lock (retain this file)
 ├── final/                                    # Final output folder
 │   ├── {origin}_edited.pptx                  # Final editable PPTX
 │   ├── {origin}_edited.assembly.json         # Assembly manifest for recorded pages
@@ -221,6 +222,8 @@ output/image-to-editable-ppt/{job-id}/        # One conversion job folder
     └── page_002/                             # Later page workspace
         └── ...
 ```
+
+Use a new output directory when starting another conversion. `prepare` rejects an existing nonempty run directory to preserve source images, active tasks, and recorded outputs. A command that times out waiting for the state lock fails without replacing the active task.
 
 ## Scope
 

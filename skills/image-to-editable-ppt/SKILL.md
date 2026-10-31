@@ -146,6 +146,8 @@ The final reply must report the final PPTX path and validation result.
 
 Agents continue only from file facts and `editppt run next`. Required states:
 
+Run mutations hold `.editppt.lock` across loading, validation, and updates; contention fails after a bounded wait rather than replacing an active owner. Never remove the lock file to bypass a wait. JSON replacement preserves the previous file if writing fails; `page_jobs.json` is committed before aggregate run status, and the next mutation repairs a stale aggregate from those jobs. Accepted pages alone do not create a run's `complete` marker or override an interrupted finalize stage; finalize writes that marker only after successful delivery writes. An interrupted finalize can be rerun against recorded/accepted pages. These protections coordinate CLI state updates, not arbitrary worker writes to page artifacts. Prepare requires a fresh run directory (an explicit empty directory is allowed); use a new directory instead of re-preparing an existing run so active leases and recorded artifacts are not erased.
+
 - `pending`: created by `editppt prepare`; restored by `editppt run reset` when a page must be re-dispatched.
 - `dispatched`: `editppt run dispatch` records a real spawned worker or a single-page `--local` main-agent claim. This status is an active lease and must not be reset or replaced just because the worker is slow.
 - `recorded`: `editppt run record` validates required outputs and writes the result; only deliverable pages (`validation.json` top-level `passed: true`) reach this state.

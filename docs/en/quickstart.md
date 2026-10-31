@@ -44,3 +44,5 @@ After the task finishes, an isolated output directory at `output/image-to-editab
 - `pages/page_NNN/`: each page's reconstruction workspace, including source images, previews, assets, and intermediate files
 
 See [Standard Workflow](/en/workflow.md) for the complete directory structure.
+
+Use a new output directory when starting another conversion. `prepare` rejects an existing nonempty run directory to preserve source images, active tasks, and recorded outputs. A command that times out waiting for the state lock fails without replacing the active task.

@@ -6,6 +6,8 @@ Release notes are generated from this file. Keep changelog entries in English.
 
 ### Fixes
 
+- Preserve run state with atomic JSON replacement and bounded run-level locking, recover aggregate status from committed page jobs, and reject preparation into an existing nonempty run directory.
+
 - Build and validate finalized decks from the same recorded page manifests and validation reports, preserving custom page-local paths and rejecting inconsistent page metadata before assembly.
 
 - Reject unreadable or corrupt PowerPoint packages during page and deck validation, and verify final slide text, image relationships, and media hashes against each page manifest.

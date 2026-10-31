@@ -2,6 +2,8 @@
 import argparse
 from pathlib import Path
 
+from deck_run_state import recover_run_state, run_lock
+
 from deck_run_state import (
     find_page,
     load_jobs,
@@ -42,6 +44,12 @@ def main():
     args = parser.parse_args()
 
     run_dir = run_dir_from_target(args.run)
+    with run_lock(run_dir):
+        recover_run_state(run_dir)
+        execute(run_dir, args)
+
+
+def execute(run_dir, args):
     jobs = load_jobs(run_dir)
     page = find_page(jobs, args.page)
     page_dir = page_dir_for(run_dir, page)

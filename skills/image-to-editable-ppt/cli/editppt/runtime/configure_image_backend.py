@@ -2,6 +2,8 @@
 import argparse
 import json
 
+from deck_run_state import recover_run_state, run_lock
+
 from deck_run_state import load_deck, load_jobs, read_json, run_dir_from_target, save_deck, write_json
 
 
@@ -103,6 +105,12 @@ def main():
             args.input_context_policy = "pass edit targets and strict visual references via editppt image edit --image"
 
     run_dir = run_dir_from_target(args.run)
+    with run_lock(run_dir):
+        recover_run_state(run_dir)
+        execute(run_dir, args)
+
+
+def execute(run_dir, args):
     deck = load_deck(run_dir)
     contract = backend_contract(args)
     deck["image_backend"] = contract
