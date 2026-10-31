@@ -180,6 +180,8 @@ The normal workflow is:
 
 ## Output Layout
 
+The lightweight `.pptx` path requires exactly one visible, opaque, full-slide rectangular picture per page, without cropping, rotation, flips, overlaid objects, theme styling, or image effects. Unsupported pages are rejected; convert them to PDF or page images first. Legacy `.ppt` input requires local LibreOffice and PyMuPDF and uses the requested DPI.
+
 Output is always a PowerPoint `.pptx` file:
 
 | Input | Output |
@@ -189,7 +191,7 @@ Output is always a PowerPoint `.pptx` file:
 | Multi-page PDF | Multi-slide `.pptx`; PDF page N maps to output slide N |
 | Image-based PPT | `.pptx` with the same slide count; source slide N maps to output slide N |
 
-Speaker notes are handled only for `.pptx` input. The parent agent copies notes to matching output slides unchanged: no translation, summarization, rewriting, or page-subagent processing.
+Speaker notes are handled for `.pptx` input and locally converted `.ppt` input. The parent agent copies notes to matching output slides unchanged: no translation, summarization, rewriting, or page-subagent processing.
 
 Use one isolated output directory per conversion. All intermediate files and final outputs stay inside it:
 

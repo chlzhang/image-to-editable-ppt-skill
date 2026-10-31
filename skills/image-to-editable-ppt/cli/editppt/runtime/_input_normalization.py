@@ -167,6 +167,23 @@ def slide_relationships(zip_file, slide_part):
     return {rel.attrib.get("Id"): rel for rel in root.findall("rel:Relationship", NS)}
 
 
+def _local_dpi_metadata_only(element):
+    """Allow compression metadata, not effects or alternate image content."""
+    if element.tag != f"{{{NS['a']}}}extLst":
+        return False
+    for extension in element:
+        if (extension.tag != f"{{{NS['a']}}}ext" or set(extension.attrib) != {"uri"}
+                or extension.get("uri", "").upper() != "{28A0092B-C50C-407E-A947-70E740481C1C}"
+                or len(extension) != 1):
+            return False
+        setting = extension[0]
+        if (setting.tag != "{http://schemas.microsoft.com/office/drawing/2010/main}useLocalDpi"
+                or set(setting.attrib) != {"val"} or setting.get("val") not in {"0", "1", "false", "true"}
+                or len(setting)):
+            return False
+    return True
+
+
 def full_slide_picture_target(zip_file, slide_part, slide_cx, slide_cy):
     slide_root = ET.fromstring(zip_file.read(slide_part))
     if collect_paragraph_text(slide_root):
@@ -175,9 +192,52 @@ def full_slide_picture_target(zip_file, slide_part, slide_cx, slide_cy):
     if len(pictures) != 1:
         raise ValueError(f"{slide_part} must contain exactly one full-slide picture; found {len(pictures)}.")
     picture = pictures[0]
+    if any(child.tag not in {f"{{{NS['p']}}}{tag}" for tag in ("nvPicPr", "blipFill", "spPr")} for child in picture):
+        raise ValueError(f"{slide_part} picture has unsupported theme styling or extensions.")
+    nonvisual = picture.find("p:nvPicPr/p:cNvPr", NS)
+    if nonvisual is not None and nonvisual.get("hidden", "false") not in {"0", "false"}:
+        raise ValueError(f"{slide_part} picture is hidden.")
+    placeholder = picture.find("p:nvPicPr/p:nvPr", NS)
+    if placeholder is not None and len(placeholder):
+        raise ValueError(f"{slide_part} picture has placeholder or media semantics.")
+    tree = slide_root.find("p:cSld/p:spTree", NS)
+    allowed = {f"{{{NS['p']}}}{tag}" for tag in ("nvGrpSpPr", "grpSpPr", "pic")}
+    if tree is None or picture not in list(tree) or any(child.tag not in allowed for child in tree):
+        raise ValueError(f"{slide_part} contains additional or grouped slide objects.")
+    group_properties = tree.find("p:grpSpPr", NS)
+    if group_properties is not None:
+        # The standard root group has an empty or all-zero coordinate frame.
+        group_tags = {f"{{{NS['a']}}}{tag}" for tag in ("xfrm", "off", "ext", "chOff", "chExt")}
+        if any(node.tag not in group_tags or any(value not in {"0", "false"} for value in node.attrib.values())
+               for node in group_properties.iter() if node is not group_properties):
+            raise ValueError(f"{slide_part} contains group transforms or effects.")
+    properties = picture.find("p:spPr", NS)
+    def plain_property(child):
+        if child.tag in {f"{{{NS['a']}}}xfrm", f"{{{NS['a']}}}prstGeom"}:
+            return True
+        return (child.tag == f"{{{NS['a']}}}ln" and len(child) == 1
+                and child[0].tag == f"{{{NS['a']}}}noFill" and not child[0].attrib and not len(child[0]))
+    if properties is None or not all(plain_property(child) for child in properties):
+        raise ValueError(f"{slide_part} picture has unsupported styling or geometry.")
+    geometry = properties.find("a:prstGeom", NS)
+    if geometry is not None and (geometry.get("prst") != "rect" or geometry.findall(".//a:gd", NS)):
+        raise ValueError(f"{slide_part} picture is not an unmodified rectangle.")
+    transform = properties.find("a:xfrm", NS)
+    if transform is not None and (int(transform.get("rot", "0")) != 0
+                                 or any(transform.get(key, "false") not in {"0", "false"} for key in ("flipH", "flipV"))):
+        raise ValueError(f"{slide_part} picture is rotated or flipped.")
+    fill = picture.find("p:blipFill", NS)
+    if fill is None or any(child.tag not in {f"{{{NS['a']}}}{tag}" for tag in ("blip", "srcRect", "stretch")} for child in fill):
+        raise ValueError(f"{slide_part} picture has unsupported image filling.")
+    for tag in ("a:srcRect", "a:stretch/a:fillRect"):
+        rectangle = fill.find(tag, NS)
+        if rectangle is not None and any(int(value) != 0 for value in rectangle.attrib.values()):
+            raise ValueError(f"{slide_part} picture is cropped or inset.")
     blip = picture.find(".//a:blip", NS)
     if blip is None:
         raise ValueError(f"{slide_part} picture has no embedded image.")
+    if not all(_local_dpi_metadata_only(child) for child in blip):
+        raise ValueError(f"{slide_part} picture has image effects or alternate representations.")
     rel_id = blip.attrib.get(f"{{{NS['r']}}}embed")
     relationships = slide_relationships(zip_file, slide_part)
     rel = relationships.get(rel_id)
@@ -210,6 +270,8 @@ def extract_image_based_pptx_pages(pptx_path, pages_dir):
             page_dir.mkdir(parents=True, exist_ok=True)
             out = page_dir / "source.png"
             with Image.open(io.BytesIO(z.read(image_part))) as image:
+                if ("A" in image.getbands() or "transparency" in image.info) and image.convert("RGBA").getchannel("A").getextrema()[0] != 255:
+                    raise ValueError(f"{slide_part} picture is transparent and requires background compositing.")
                 image.convert("RGB").save(out)
             outputs.append(out)
     return outputs
@@ -342,7 +404,7 @@ def _normalize_inputs_in_dir(input_paths, job_dir, dpi):
                 if source_pptx != copied[0]:
                     shutil.copy2(source_pptx, input_dir / source_pptx.name)
                 rendered_pdf = convert_office_to_pdf(copied[0], tmp_dir)
-                sources = render_pdf_pages(rendered_pdf, pages_dir, args.dpi)
+                sources = render_pdf_pages(rendered_pdf, pages_dir, dpi)
         pages = [page_record(job_dir, i, source, copied[0], i) for i, source in enumerate(sources, start=1)]
     elif suffixes <= IMG_EXTS:
         input_type = "image" if len(copied) == 1 else "images"

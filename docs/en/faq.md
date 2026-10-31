@@ -26,6 +26,8 @@ On first use, the AI will ask for the Token once. Send it the Token, and the set
 
 The skill supports a single image, multiple images, a multi-page PDF, and an image-based `.pptx`, and always outputs an editable `.pptx`. Multiple images become slides in the order provided, while PDFs and `.pptx` files preserve their original page order. Speaker notes from `.pptx` inputs are copied unchanged to the corresponding output slides.
 
+The lightweight `.pptx` path requires exactly one visible, opaque, full-slide rectangular picture per page, without cropping, rotation, flips, overlaid objects, theme styling, or image effects. Unsupported pages are rejected; convert them to PDF or page images first. Legacy `.ppt` input requires local LibreOffice and PyMuPDF and uses the requested DPI.
+
 ## Can the Conversion Reproduce the Source Image Exactly?
 
 An exact match is not guaranteed. Readable text and simple shapes are restored as editable objects whenever possible, but some image elements and text positions may be slightly offset. Complex elements such as photos, illustrations, and textures usually remain separate image assets and are not guaranteed to be internally editable. Evaluate quality using the PPTX structure, text coverage, asset provenance, and preview comparison together. See the Limitations section in [Standard Workflow](/en/workflow.md).

@@ -4,6 +4,8 @@
 
 这页给第一次使用 Image to Editable PPT 的人看。你只需要准备一张或多张幻灯片图片、一份 PDF，或一个图片版 `.pptx`，然后让 agent 使用 `image-to-editable-ppt` skill 把它转成可编辑 PowerPoint。
 
+轻量 `.pptx` 输入每页必须只有一张不透明、可见、未裁剪、未旋转或镜像、无叠加对象、主题样式及图像效果的全幅矩形图片。不符合条件时会明确拒绝，请先转换为 PDF 或页面图片。旧版 `.ppt` 需要本地 LibreOffice 和 PyMuPDF，转换时使用指定的 DPI。
+
 ## 开始前请确认
 
 - **额度**：转换很费 token。推荐 ChatGPT Pro 用户使用；Plus 用户请谨慎，复原一个 10 页 PPT 有可能消耗完 5 小时额度。第一次建议先拿 1 页试水。

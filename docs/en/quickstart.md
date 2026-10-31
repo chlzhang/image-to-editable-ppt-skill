@@ -4,6 +4,8 @@
 
 This page is for first-time Image to Editable PPT users. Prepare one or more slide images, a PDF, or an image-based `.pptx`, then ask an agent to use the `image-to-editable-ppt` skill to convert it into an editable PowerPoint presentation.
 
+The lightweight `.pptx` path requires exactly one visible, opaque, full-slide rectangular picture per page, without cropping, rotation, flips, overlaid objects, theme styling, or image effects. Unsupported pages are rejected; convert them to PDF or page images first. Legacy `.ppt` input requires local LibreOffice and PyMuPDF and uses the requested DPI.
+
 ## Before You Begin
 
 - **Usage allowance**: conversion consumes substantial tokens. ChatGPT Pro is recommended; Plus users should proceed with caution, as reconstructing a 10-slide deck may use an entire five-hour allowance. Start with one slide for your first trial.

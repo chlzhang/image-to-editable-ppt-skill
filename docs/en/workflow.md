@@ -28,7 +28,7 @@ The output is always a PowerPoint `.pptx`:
 | Multi-page PDF | Multi-slide `.pptx`, with PDF page N mapped to output slide N |
 | Image-based PowerPoint | A `.pptx` with the same slide count, with source slide N mapped to output slide N |
 
-Only `.pptx` inputs include speaker-note handling. The main agent copies notes unchanged to the corresponding output slides without translation, summarization, rewriting, or page-worker processing.
+Both `.pptx` inputs and locally converted `.ppt` inputs include speaker-note handling. The main agent copies notes unchanged to the corresponding output slides without translation, summarization, rewriting, or page-worker processing.
 
 ## Output Directory Structure
 
