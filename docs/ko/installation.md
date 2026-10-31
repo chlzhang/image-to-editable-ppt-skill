@@ -50,6 +50,8 @@ image-to-editable-ppt skill을 업데이트해 주세요. 주소는 https://gith
 
 ## OCR Token(권장 구성)
 
+미리보기에는 텍스트 문자를 지원하는 로컬 확장형 글꼴이 필요합니다(CJK에는 Microsoft YaHei, Source Han Sans 또는 Noto CJK 권장). 글꼴이 없거나 손상되었거나 누락된 글리프가 감지되면 명확히 실패하며, 기존 `preview_font` 필드로 글꼴 파일을 지정할 수 있습니다. SVG 미리보기에는 PATH의 ImageMagick이 필요하며 도구가 없으면 불완전한 미리보기를 저장하지 않고 실패합니다. 이 설정은 PPTX의 네이티브 글꼴 필드를 변경하지 않습니다.
+
 이 skill은 타사 OCR 서비스(바이두 PaddleOCR-VL)로 텍스트 상자 좌표, 글자 크기, 크기 그룹을 보정해 텍스트 복원 품질을 크게 높입니다. 원리는 [설계 철학](/ko/design.md)을 참고하세요.
 
 **사용자가 할 일은 Token 신청 하나뿐입니다.** 바이두 AI Studio에서 Access Token을 신청하세요: <https://aistudio.baidu.com/account/accessToken>. 개인 사용의 경우 현재 무료 할당량으로 충분하며 추가 비용이 없습니다.

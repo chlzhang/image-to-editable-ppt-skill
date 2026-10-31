@@ -104,6 +104,8 @@ https://github.com/user-attachments/assets/6e60b3a1-4fd9-4225-9a12-ace8f2aa67a9
 
 ## 运行要求
 
+预览需要可缩放且包含所用字符的本地字体（中文建议使用微软雅黑、思源黑体或 Noto CJK）。字体缺失、损坏或检测到缺字时会明确失败；可用已有的 `preview_font` 字段指定字体文件。SVG 素材预览需要 PATH 中的 ImageMagick，缺少工具时不会生成漏画素材的成功预览。这些设置不改变 PPTX 的原生字体字段。
+
 - 单页/单图输入不需要创建 page worker，但仍必须走同一页面 prompt、产物和 `editppt run record` 校验流程。多页输入需要 agent 能分派 page worker/subagent；如果不能创建 page worker，应换到支持 page worker 的环境执行。
 - 复杂背景补全、前景图标提取、透明 asset sheet 和局部图片编辑按页面串行执行，并优先使用内置 `image_gen.imagegen`。
 - 内置工具满足降级条件时才进入 CLI fallback；如果本机有 Codex OAuth（`~/.codex/auth.json`），CLI 会直接使用，否则使用 API fallback。

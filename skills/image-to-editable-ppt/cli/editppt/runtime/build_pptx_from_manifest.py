@@ -3,9 +3,10 @@ import argparse
 import html
 import json
 import math
+import os
 import re
+import shutil
 import subprocess
-import sys
 import tempfile
 import zipfile
 from copy import deepcopy
@@ -796,7 +797,7 @@ def output_path_from_deck_manifest(deck_manifest_path):
 
 
 def render_preview(manifest, manifest_path, out_path):
-    from PIL import Image, ImageColor, ImageDraw, ImageFont
+    from PIL import Image, ImageColor, ImageDraw
 
     manifest = normalize_manifest(manifest)
     slide = manifest.get("slide", {})
@@ -810,15 +811,16 @@ def render_preview(manifest, manifest_path, out_path):
     def open_preview_image(src):
         if src.suffix.lower() != ".svg":
             return Image.open(src).convert("RGBA")
-        convert = "/opt/homebrew/bin/magick"
-        if not Path(convert).exists():
-            convert = "/opt/homebrew/bin/convert"
-        if not Path(convert).exists():
-            print(f"Warning: cannot preview SVG without ImageMagick: {src}", file=sys.stderr)
-            return None
-        with tempfile.NamedTemporaryFile(suffix=".png") as handle:
-            subprocess.run([convert, str(src), handle.name], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            return Image.open(handle.name).convert("RGBA")
+        convert = shutil.which("magick") or (shutil.which("convert") if os.name != "nt" else None)
+        if not convert:
+            raise RuntimeError(f"SVG preview requires ImageMagick on PATH: {src}")
+        # A closed destination is required on Windows; NamedTemporaryFile locks it.
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "preview.png"
+            subprocess.run([convert, str(src), str(output)], check=True, stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE, timeout=120)
+            with Image.open(output) as image:
+                return image.convert("RGBA")
 
     def render_shape(item):
         box = [item.get("left", 0) * scale, item.get("top", 0) * scale, (item.get("left", 0) + item.get("width", 1)) * scale, (item.get("top", 0) + item.get("height", 1)) * scale]
@@ -866,11 +868,6 @@ def render_preview(manifest, manifest_path, out_path):
     def render_text(item):
         preview_font_scale = float(item.get("preview_font_scale", manifest.get("preview_font_scale", 1.0)))
         size = max(1, int(float(item.get("font_size", 18)) * scale / 72 * preview_font_scale))
-        font_path = choose_preview_font(item.get("preview_font"))
-        try:
-            font = ImageFont.truetype(font_path, size=size) if font_path else ImageFont.load_default()
-        except Exception:
-            font = ImageFont.load_default()
         if item.get("paragraphs"):
             lines = []
             for paragraph in item["paragraphs"]:
@@ -883,6 +880,7 @@ def render_preview(manifest, manifest_path, out_path):
             preview_text = "".join(str(run.get("text", "")) for run in item["runs"])
         else:
             preview_text = item.get("text", "")
+        font = None if item.get("runs") else load_preview_font(item.get("preview_font"), size, preview_text)
         fill = preview_color(item.get("color", "#111111"))
         align = text_alignment(item.get("align", "left"))[1]
         valign = text_vertical_alignment(item.get("valign", "top"))[1]
@@ -915,11 +913,8 @@ def render_preview(manifest, manifest_path, out_path):
             base_size = size
             for run in item["runs"]:
                 run_size = max(1, int(float(run.get("font_size", item.get("font_size", 18))) * scale / 72 * preview_font_scale))
-                run_font_path = choose_preview_font(run.get("preview_font") or item.get("preview_font"))
-                try:
-                    run_font = ImageFont.truetype(run_font_path, size=run_size) if run_font_path else ImageFont.load_default()
-                except Exception:
-                    run_font = font
+                run_font = load_preview_font(run.get("preview_font") or item.get("preview_font"),
+                                             run_size, str(run.get("text", "")))
                 run_fill = preview_color(run.get("color", item.get("color", "#111111")))
                 baseline = float(run.get("baseline", 0) or 0)
                 run_y = int(-baseline / 100000 * base_size)
@@ -986,17 +981,50 @@ def render_preview(manifest, manifest_path, out_path):
 
 
 def choose_preview_font(preferred):
+    windows_fonts = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts"
+    local_fonts = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData/Local"))) / "Microsoft/Windows/Fonts"
+    user_fonts = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share"))) / "fonts"
     candidates = [
         preferred,
+        user_fonts / "NotoSansCJKsc-Regular.otf",
+        local_fonts / "NotoSansCJKsc-Regular.otf",
         "/System/Library/Fonts/STHeiti Medium.ttc",
         "/System/Library/Fonts/STHeiti Light.ttc",
         "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
         "/Library/Fonts/Arial Unicode.ttf",
+        *[windows_fonts / name for name in ("msyh.ttc", "simsun.ttc", "yugothm.ttc", "arial.ttf")],
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
     ]
     for candidate in candidates:
-        if candidate and Path(candidate).exists():
-            return candidate
+        if candidate and Path(candidate).is_file():
+            return str(candidate)
     return None
+
+
+def load_preview_font(preferred, size, text):
+    """Never hide font failures behind a fixed-size bitmap or missing-glyph boxes."""
+    from PIL import ImageFont
+
+    path = choose_preview_font(preferred)
+    if not path or (preferred and not Path(preferred).is_file()):
+        raise ValueError("No usable scalable preview font; install a CJK-capable font or set preview_font")
+    try:
+        font = ImageFont.truetype(path, size=size)
+    except (OSError, ValueError) as exc:
+        raise ValueError(f"Cannot load preview font: {path}") from exc
+    # At 1px, valid glyphs can rasterize identically to .notdef. Probe coverage
+    # independently of output scale, then keep the requested rendering font.
+    probe = font.font_variant(size=64)
+    missing = probe.getmask("\U0010ffff")
+    for char in set(text):
+        if not char.isspace():
+            mask = probe.getmask(char)
+            if mask.size == missing.size and bytes(mask) == bytes(missing):
+                raise ValueError(f"Preview font lacks glyph U+{ord(char):04X}: {path}; use a font covering this text")
+    return font
 
 
 def main():

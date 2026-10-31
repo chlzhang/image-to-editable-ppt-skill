@@ -104,6 +104,8 @@ https://github.com/user-attachments/assets/6e60b3a1-4fd9-4225-9a12-ace8f2aa67a9
 
 ## 실행 요구 사항
 
+미리보기에는 텍스트 문자를 지원하는 로컬 확장형 글꼴이 필요합니다(CJK에는 Microsoft YaHei, Source Han Sans 또는 Noto CJK 권장). 글꼴이 없거나 손상되었거나 누락된 글리프가 감지되면 명확히 실패하며, 기존 `preview_font` 필드로 글꼴 파일을 지정할 수 있습니다. SVG 미리보기에는 PATH의 ImageMagick이 필요하며 도구가 없으면 불완전한 미리보기를 저장하지 않고 실패합니다. 이 설정은 PPTX의 네이티브 글꼴 필드를 변경하지 않습니다.
+
 - 단일 페이지/이미지 입력은 page worker를 만들 필요가 없지만, 동일한 페이지 프롬프트·산출물·`editppt run record` 검증 흐름을 따라야 합니다. 다중 페이지 입력은 agent가 page worker/subagent를 분배할 수 있어야 하며, page worker를 만들 수 없다면 지원되는 환경에서 실행해야 합니다.
 - 복잡한 배경 보완, 전경 아이콘 추출, 투명 asset sheet, 부분 이미지 편집은 페이지별로 순차 실행하며 내장 `image_gen.imagegen`을 우선 사용합니다.
 - 내장 도구가 폴백 조건을 충족할 때만 CLI 폴백으로 전환합니다. 로컬에 Codex OAuth(`~/.codex/auth.json`)가 있으면 CLI가 직접 사용하고, 그렇지 않으면 API 폴백을 사용합니다.

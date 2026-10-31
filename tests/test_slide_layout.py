@@ -14,6 +14,7 @@ sys.path.insert(0, str(RUNTIME_DIR))
 
 from build_pptx_from_manifest import (  # noqa: E402
     content_box_for_manifest,
+    choose_preview_font,
     emu,
     normalize_manifest,
     px_to_inches,
@@ -26,12 +27,7 @@ from prepare_deck_run import fit_content_box, slide_for_source  # noqa: E402
 
 
 def scalable_test_font():
-    candidates = (
-        "/System/Library/Fonts/Supplemental/Arial.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
-    )
-    return next((path for path in candidates if Path(path).exists()), None)
+    return choose_preview_font(None)
 
 
 def preview_ink_center(manifest):

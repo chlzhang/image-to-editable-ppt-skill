@@ -55,3 +55,7 @@ First check whether the permission mode is waiting for your approval (see the Fu
 ## Why Does Asset-Sheet Processing Fail?
 
 Asset-sheet outputs stay inside their page directory; external sheets and region files are read-only inputs. Missing inputs or required outputs, or an empty split, fail without marking the asset job processed. With `--skip-split`, only the alpha output is required.
+
+## Preview Fonts and SVG Tools
+
+Previews require a local scalable font covering the text (for CJK, use Microsoft YaHei, Source Han Sans, or Noto CJK). Missing/invalid fonts or detected missing glyphs fail clearly; the existing `preview_font` field can select a font file. SVG previews require ImageMagick on PATH and fail if it is unavailable instead of saving an incomplete preview. These settings do not change native PPTX font fields.

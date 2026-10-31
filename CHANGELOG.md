@@ -6,6 +6,8 @@ Release notes are generated from this file. Keep changelog entries in English.
 
 ### Fixes
 
+- Discover scalable preview fonts on Windows and Linux, preserve requested text/run sizes, and fail clearly on missing glyphs or SVG tools instead of saving misleading previews. Run offline CI on Windows/Linux with Python 3.10 and 3.12 using isolated credentials and a Python subprocess network guard.
+
 - Resolve asset-sheet inputs from recorded jobs, verify processing outputs before marking jobs processed, and keep sheet/report/asset writes inside the owning page directory.
 
 - Forward the requested DPI when preparing legacy PPT inputs, and reject image-based PPTX slides with extra objects, transforms, or unsupported picture styling instead of silently dropping visible content.

@@ -104,6 +104,8 @@ It is useful when screenshot-like or image-based slides need to become easier to
 
 ## Runtime Requirements
 
+Previews require a local scalable font covering the text (for CJK, use Microsoft YaHei, Source Han Sans, or Noto CJK). Missing/invalid fonts or detected missing glyphs fail clearly; the existing `preview_font` field can select a font file. SVG previews require ImageMagick on PATH and fail if it is unavailable instead of saving an incomplete preview. These settings do not change native PPTX font fields.
+
 - Single-page or single-image input does not require creating a page worker, but it still must use the same page prompt, artifacts, and `editppt run record` validation flow. Multi-page input requires the agent to dispatch page workers/subagents; if page workers cannot be created, run the skill in an environment that supports page workers.
 - Complex background cleanup, foreground icon extraction, transparent asset sheets, and local image edits run serially per page and prefer the built-in `image_gen.imagegen` tool.
 - The CLI fallback is entered only for a defined built-in failure. If local Codex OAuth exists (`~/.codex/auth.json`), the CLI uses it directly; otherwise it uses API fallback.

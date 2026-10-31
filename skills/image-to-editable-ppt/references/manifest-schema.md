@@ -308,6 +308,8 @@ Text-size fitting:
 - `text_boxes[].box_px` should describe the source text bounds plus modest padding. Do not use an unrelated card, chart, or table cell group as the text box, because the fitter infers size from the supplied box. Badge-centered text is the explicit shared-box exception in `page-decision-tree.md` section 3.6.
 - Optional tuning fields are `min_font_size`, `max_font_size`, `text_fit_safety`, and `line_height`.
 
+Preview-only font fields: `text_boxes[].preview_font` and `text_boxes[].runs[].preview_font` may select an existing scalable font file; run values override box values. Automatic lookup checks common macOS/Windows/Linux CJK fonts and user font directories (including `~/.local/share/fonts/NotoSansCJKsc-Regular.otf`). Missing/invalid fonts or detected missing glyphs fail preview rendering instead of silently using a fixed-size bitmap font. `preview_font_scale` remains a preview-only multiplier. These fields do not change the native PPTX `font`/`font_size` contract. SVG previews require ImageMagick on PATH; missing tools fail rather than omit the asset.
+
 Text alignment:
 
 - `text_boxes[].align` accepts `left`, `center`, or `right` (default `left`). The equivalent DrawingML tokens `l`, `ctr`, and `r` are also accepted.

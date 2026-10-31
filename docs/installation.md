@@ -50,6 +50,8 @@ ln -s /path/to/image-to-editable-ppt-skill/skills/image-to-editable-ppt ~/.codex
 
 ## OCR Token（推荐配置）
 
+预览需要可缩放且包含所用字符的本地字体（中文建议使用微软雅黑、思源黑体或 Noto CJK）。字体缺失、损坏或检测到缺字时会明确失败；可用已有的 `preview_font` 字段指定字体文件。SVG 素材预览需要 PATH 中的 ImageMagick，缺少工具时不会生成漏画素材的成功预览。这些设置不改变 PPTX 的原生字体字段。
+
 本 skill 通过第三方 OCR 服务（百度 PaddleOCR-VL）来校正文字的大小和位置，显著提升文字还原质量，原理参见[设计理念](design.md)。
 
 **你只需要做一个动作——申请 Token**：到百度 AI Studio 申请 Access Token：<https://aistudio.baidu.com/account/accessToken>。对个人使用来说，目前免费额度完全够用，可以放心申请，无额外费用。

@@ -50,6 +50,8 @@ The skill can run for a long time and automatically performs OCR, image generati
 
 ## OCR Token (Recommended)
 
+Previews require a local scalable font covering the text (for CJK, use Microsoft YaHei, Source Han Sans, or Noto CJK). Missing/invalid fonts or detected missing glyphs fail clearly; the existing `preview_font` field can select a font file. SVG previews require ImageMagick on PATH and fail if it is unavailable instead of saving an incomplete preview. These settings do not change native PPTX font fields.
+
 This skill uses a third-party OCR service (Baidu PaddleOCR-VL) to correct text size and position, substantially improving text reconstruction quality. See [Design Principles](/en/design.md) for how it works.
 
 **You only need to do one thing—obtain a Token**: request an Access Token from Baidu AI Studio at <https://aistudio.baidu.com/account/accessToken>. The current free allowance is more than sufficient for personal use, with no additional charge.
