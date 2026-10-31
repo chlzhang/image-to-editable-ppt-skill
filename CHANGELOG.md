@@ -4,6 +4,10 @@ Release notes are generated from this file. Keep changelog entries in English.
 
 ## Unreleased
 
+### Fixes
+
+- Reject unreadable or corrupt PowerPoint packages during page and deck validation, and verify final slide text, image relationships, and media hashes against each page manifest.
+
 ### Documentation
 
 - Replace the Spire.Presentation sponsor icon with the official e-iceblue logo supplied by the sponsor across all README and documentation languages. (#46)

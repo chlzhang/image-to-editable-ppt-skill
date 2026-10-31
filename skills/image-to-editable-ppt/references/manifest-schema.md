@@ -178,6 +178,8 @@ Owner: created by the page reconstructor, read by `editppt run record`.
 
 Purpose: page-level deliverability conclusion.
 
+Page and final-deck validation reports include `package_errors`, a list of fatal package errors (CRC failures, unreadable XML, missing required parts, or broken internal relationships). A non-empty list always makes top-level `passed` false; visual warnings remain separate. Final-deck `page_contract_violations` also records per-slide missing required text, image relationship mismatches, and media hash mismatches against the corresponding page manifest, using deck-wide media indices.
+
 `line_geometry_violations` records mismatches between declared paths/stroke styles and the actual PPTX objects. A non-empty list fails page validation; final deck validation reports these mismatches under `page_contract_violations`.
 
 Native table validation report fields:

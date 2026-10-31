@@ -8,7 +8,7 @@ import zipfile
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from build_pptx_from_manifest import TEXT_ALIGNMENTS, TEXT_VERTICAL_ALIGNMENTS, normalize_manifest, slide_xml
+from build_pptx_from_manifest import TEXT_ALIGNMENTS, TEXT_VERTICAL_ALIGNMENTS, normalize_manifest, rels_xml, slide_xml
 
 
 NS = {
@@ -521,6 +521,7 @@ def validate_deck(args):
         "notes_hash_mismatches": [],
         "missing_parts": [],
         "warnings": [],
+        "package_errors": [],
         "passed": False,
     }
 
@@ -539,7 +540,7 @@ def validate_deck(args):
                 raw_manifest = read_manifest(manifest_path)
                 normalized_manifest, authoring_violations = normalize_for_validation(raw_manifest)
                 if not authoring_violations:
-                    geometry_manifests.append((page_index, normalized_manifest))
+                    geometry_manifests.append((page_index, normalized_manifest, manifest_path.parent))
                 violations = (
                     authoring_violations
                     + page_contract_violations(normalized_manifest)
@@ -574,15 +575,23 @@ def validate_deck(args):
     try:
         with zipfile.ZipFile(args.pptx) as z:
             names = z.namelist()
+            report["package_errors"].extend(package_integrity_errors(z, names))
             report["slides"] = len([n for n in names if re.match(r"ppt/slides/slide\d+\.xml$", n)])
-            for page_index, page_manifest in geometry_manifests:
+            media_start = 1
+            for page_index, page_manifest, manifest_base in geometry_manifests:
                 slide_part = f"ppt/slides/slide{page_index}.xml"
                 if slide_part in names:
                     slide_root = ET.fromstring(z.read(slide_part))
                     violations = (line_geometry_violations(page_manifest, slide_root)
-                                  + table_structure_violations(page_manifest, slide_root))
+                                  + table_structure_violations(page_manifest, slide_root)
+                                  + slide_content_violations(z, names, slide_part, page_manifest,
+                                                             manifest_base, media_start))
                     if violations:
                         report["page_contract_violations"].append({"page_index": page_index, "violations": violations})
+                media_start += len(page_manifest.get("images", []))
+            expected_media = sum(len(m.get("images", [])) for _, m, _ in geometry_manifests)
+            if len([n for n in names if n.startswith("ppt/media/") and not n.endswith("/")]) != expected_media:
+                report["package_errors"].append("Media count differs from page manifests")
             for part in ("[Content_Types].xml", "_rels/.rels", "ppt/presentation.xml", "ppt/_rels/presentation.xml.rels"):
                 if part not in names:
                     report["missing_parts"].append(part)
@@ -597,7 +606,7 @@ def validate_deck(args):
                 elif sha256_text(actual) != expected_hash:
                     report["notes_hash_mismatches"].append({"page_index": page_index, "reason": "text hash mismatch"})
     except Exception as exc:
-        report["warnings"].append(f"Unable to read pptx: {exc}")
+        report["package_errors"].append(f"Unable to read pptx: {exc}")
 
     report["passed"] = (
         report["slides"] == expected_pages
@@ -607,6 +616,7 @@ def validate_deck(args):
         and not report["page_contract_violations"]
         and not report["missing_parts"]
         and not report["notes_hash_mismatches"]
+        and not report["package_errors"]
     )
     output = json.dumps(report, ensure_ascii=False, indent=2)
     if args.report:
@@ -662,6 +672,66 @@ def file_sha256(path):
     return digest.hexdigest()
 
 
+def package_integrity_errors(z, names):
+    """Fatal package checks shared by page and deck validation."""
+    errors = []
+    bad = z.testzip()
+    if bad:
+        errors.append(f"Bad zip member: {bad}")
+    for name in ("[Content_Types].xml", "_rels/.rels", "ppt/presentation.xml",
+                 "ppt/_rels/presentation.xml.rels"):
+        if name not in names:
+            errors.append(f"Missing package part: {name}")
+    for name in names:
+        if name.endswith((".xml", ".rels")):
+            # Parsing failures are fatal even after the slide count is known.
+            ET.fromstring(z.read(name))
+        if re.fullmatch(r"ppt/(slides/slide|notesSlides/notesSlide)\d+\.xml", name):
+            rels = f"{posixpath.dirname(name)}/_rels/{posixpath.basename(name)}.rels"
+            if rels not in names:
+                errors.append(f"Missing slide relationships: {rels}")
+        if name.endswith(".rels"):
+            for target in relationship_targets(z, name, names):
+                if not target["external"] and (not target["resolved"] or target["resolved"] not in names):
+                    errors.append(f"Missing relationship target: {name} {target['id']} -> {target['target']}")
+    return errors
+
+
+def slide_content_violations(z, names, slide_part, manifest, manifest_base, media_start=1):
+    """Match each actual slide to its own text and sequential deck media."""
+    violations = []
+    rels_name = f"ppt/slides/_rels/{posixpath.basename(slide_part)}.rels"
+    expected_rels = ET.fromstring(rels_xml(manifest, media_start))
+    expected_images = {rel.get("Id"): rel.get("Target") for rel in expected_rels
+                       if rel.get("Type", "").endswith("/image")}
+    actual_images = {rel["id"]: rel["target"] for rel in relationship_targets(z, rels_name, names)
+                     if rel["type"].endswith("/image")}
+    if actual_images != expected_images:
+        violations.append({"field": "images", "reason": "image relationships differ from manifest"})
+    expected_slide = ET.fromstring(slide_xml(manifest))
+    actual_slide = ET.fromstring(z.read(slide_part))
+    embed_key = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed"
+    expected_refs = [node.get(embed_key) for node in expected_slide.findall(".//p:pic//a:blip", NS)]
+    actual_refs = [node.get(embed_key) for node in actual_slide.findall(".//p:pic//a:blip", NS)]
+    if actual_refs != expected_refs:
+        violations.append({"field": "images", "reason": "slide picture references differ from manifest"})
+    actual_text = collect_text(z.read(slide_part))
+    for text in required_texts_from_manifest(manifest):
+        if text and text not in actual_text:
+            violations.append({"field": "text", "reason": "missing required text", "text": text})
+    for index, image in enumerate(manifest.get("images", []), start=media_start):
+        path = Path(image["path"])
+        ext = path.suffix.lower()
+        if ext == ".jpeg":
+            ext = ".jpg"
+        media = f"ppt/media/image{index}{ext}"
+        source = path if path.is_absolute() else Path(manifest_base) / path
+        if not source.is_file() or media not in names or file_sha256(source) != hashlib.sha256(z.read(media)).hexdigest():
+            violations.append({"field": "images", "path": image["path"], "media": media,
+                               "reason": "missing image or media hash mismatch"})
+    return violations
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("pptx")
@@ -704,6 +774,7 @@ def main():
         "media_manifest_mismatch": False,
         "relationship_targets_checked": 0,
         "warnings": [],
+        "package_errors": [],
         "page_contract_violations": [],
         "line_geometry_violations": [],
         "table_structure_violations": [],
@@ -716,6 +787,7 @@ def main():
             if bad:
                 report["warnings"].append(f"Bad zip member: {bad}")
             names = z.namelist()
+            report["package_errors"].extend(package_integrity_errors(z, names))
             required_parts = [
                 "[Content_Types].xml",
                 "_rels/.rels",
@@ -794,7 +866,7 @@ def main():
                 texts.append(collect_text(xml))
             report["all_text"] = "\n".join(texts)
     except Exception as exc:
-        report["warnings"].append(f"Unable to read pptx: {exc}")
+        report["package_errors"].append(f"Unable to read pptx: {exc}")
 
     for text in required:
         if text and text not in report["all_text"]:
@@ -845,6 +917,7 @@ def main():
 
     report["passed"] = (
         report["zip_ok"]
+        and not report["package_errors"]
         and report["slides"] >= 1
         and not report["media_manifest_mismatch"]
         and not report["missing_parts"]
