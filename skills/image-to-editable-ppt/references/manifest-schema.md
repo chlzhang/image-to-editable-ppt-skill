@@ -172,6 +172,8 @@ Minimal required shape (paths are relative to the page directory):
 
 The `manifest` artifact is the authoritative page source for final assembly. `editppt run finalize` rebuilds the final deck from recorded page manifests in page order. The `page_pptx` artifact remains a page-level deliverability artifact and is validated by `editppt run record`, but it is not the final assembly input.
 
+Finalization selects each page's `result.outputs.page_manifest` and `result.outputs.validation` from `page_jobs.json`, verifies their recorded hashes and page-local paths, and checks deck/job page identity, count, and index consistency before building. Missing recorded paths or hashes require another `run record`; default paths are not substitutes. Beside the final PPTX, `<output-stem>.assembly.json` uses the `deck_manifest.json` contract with those selected manifest/validation paths and the original run directory as `job_dir`. Both assembly and final validation consume this same file so custom recorded paths cannot silently revert to unrecorded defaults. Standalone `--deck-manifest` commands still use the paths in the explicitly supplied deck manifest.
+
 ## `pages/page_NNN/validation.json`
 
 Owner: created by the page reconstructor, read by `editppt run record`.

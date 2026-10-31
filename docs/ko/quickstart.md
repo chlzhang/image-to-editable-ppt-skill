@@ -38,6 +38,7 @@ skill을 명시적으로 선택할 수 있는 다른 agent에서는 해당 문�
 작업이 끝나면 독립 출력 디렉터리 `output/image-to-editable-ppt/{job-id}/`에 다음 파일이 생성됩니다.
 
 - `final/{origin}_edited.pptx`: 최종 편집 가능 PowerPoint 파일
+- `final/{origin}_edited.assembly.json`: 기록된 페이지의 조립 매니페스트
 - `final/validation.json`: 최종 deck 검증 결과
 - `final/run_summary.json`: 이번 변환 요약
 - `pages/page_NNN/`: 페이지별 재구성 작업 공간(원본 이미지, 미리보기, 에셋 등의 중간 산출물)

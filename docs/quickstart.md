@@ -38,6 +38,7 @@ $image-to-editable-ppt 把 <path-to-deck.pdf> 转成可编辑 PPT。
 任务完成后，会在独立输出目录 `output/image-to-editable-ppt/{job-id}/` 下得到：
 
 - `final/{origin}_edited.pptx`：最终可编辑 PowerPoint 文件
+- `final/{origin}_edited.assembly.json`：已验收页面的组装清单
 - `final/validation.json`：最终 deck 校验结果
 - `final/run_summary.json`：本次转换摘要
 - `pages/page_NNN/`：每页的重建工作区（源图、预览图、资产等中间产物）

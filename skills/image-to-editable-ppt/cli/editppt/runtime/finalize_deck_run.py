@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
 import json
 import subprocess
 import sys
 from pathlib import Path
 
-from deck_run_state import load_deck, load_jobs, now_iso, run_dir_from_target, save_deck, save_jobs, set_run_status, sha256_file, write_json
+from deck_run_state import load_deck, load_jobs, now_iso, resolve_inside, run_dir_from_target, save_deck, save_jobs, set_run_status, sha256_file, write_json
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -50,6 +51,43 @@ def assert_pages_ready(run_dir, jobs):
         raise SystemExit("Pages are not ready for finalize:\n" + "\n".join(problems))
 
 
+def recorded_page_entries(run_dir: Path, deck: dict, jobs: dict) -> list[dict]:
+    """Bind deck order to the manifests and validation reports that record verified."""
+    pages = deck.get("pages", [])
+    job_pages = jobs.get("pages", [])
+    deck_ids = [page.get("page_id") for page in pages]
+    job_ids = [page.get("page_id") for page in job_pages]
+    if (not pages or any(not isinstance(value, str) or not value for value in deck_ids + job_ids)
+            or len(set(deck_ids)) != len(deck_ids) or len(set(job_ids)) != len(job_ids)
+            or set(deck_ids) != set(job_ids) or deck.get("page_count", len(pages)) != len(pages)):
+        raise SystemExit("Deck and recorded jobs must have matching unique page ids and page counts")
+    by_id = {page["page_id"]: page for page in job_pages}
+    entries = []
+    for index, page in enumerate(pages, 1):
+        job = by_id[page["page_id"]]
+        if page.get("page_index", index) != index or job.get("page_index", index) != index:
+            raise SystemExit(f"Page order mismatch for {page['page_id']}")
+        page_dir = resolve_inside(run_dir, job["page_dir"])
+        if resolve_inside(run_dir, page["page_dir"]) != page_dir:
+            raise SystemExit(f"Page directory mismatch for {page['page_id']}")
+        result = job.get("result") or {}
+        outputs = result.get("outputs") or {}
+        hashes = result.get("hashes") or {}
+        paths = {}
+        for key in ("page_manifest", "validation"):
+            if not outputs.get(key) or not hashes.get(key):
+                raise SystemExit(f"{page['page_id']} missing recorded {key}; validate and record the page again")
+            path = resolve_inside(page_dir, resolve_inside(run_dir, outputs[key]))
+            data = path.read_bytes()
+            if hashlib.sha256(data).hexdigest() != hashes[key]:
+                raise SystemExit(f"{page['page_id']} recorded artifact changed: {path}")
+            paths[key] = (path, json.loads(data))
+        entries.append({"manifest": paths["page_manifest"][1],
+                        "manifest_path": paths["page_manifest"][0],
+                        "validation_path": paths["validation"][0]})
+    return entries
+
+
 def main():
     parser = argparse.ArgumentParser(description="Build and validate the final editable PPTX from recorded pages.")
     parser.add_argument("run", help="Run directory or deck_manifest.json")
@@ -59,14 +97,23 @@ def main():
     deck = load_deck(run_dir)
     jobs = load_jobs(run_dir)
     assert_pages_ready(run_dir, jobs)
+    entries = recorded_page_entries(run_dir, deck, jobs)
 
     out = final_output_path(run_dir, deck)
     out.parent.mkdir(parents=True, exist_ok=True)
-    run([sys.executable, SCRIPT_DIR / "build_pptx_from_manifest.py", "--deck-manifest", run_dir / "deck_manifest.json", "--out", out])
+    # Keep the selected input mapping inspectable and use it for BOTH commands.
+    # Re-reading the original deck here would silently restore unrecorded defaults.
+    assembly = dict(deck, job_dir=str(run_dir), pages=[
+        dict(page, manifest=str(entry["manifest_path"]), validation=str(entry["validation_path"]))
+        for page, entry in zip(deck["pages"], entries)
+    ])
+    assembly_path = out.with_suffix(".assembly.json")
+    write_json(assembly_path, assembly)
+    run([sys.executable, SCRIPT_DIR / "build_pptx_from_manifest.py", "--deck-manifest", assembly_path, "--out", out])
     set_run_status(run_dir, "deck_built", "final pptx built")
 
     validation = out.parent / "validation.json"
-    run([sys.executable, SCRIPT_DIR / "validate_pptx.py", out, "--deck-manifest", run_dir / "deck_manifest.json", "--report", validation])
+    run([sys.executable, SCRIPT_DIR / "validate_pptx.py", out, "--deck-manifest", assembly_path, "--report", validation])
     set_run_status(run_dir, "deck_validated", "final pptx validation passed")
 
     for page in jobs.get("pages", []):

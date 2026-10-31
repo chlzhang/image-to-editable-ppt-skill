@@ -43,6 +43,7 @@ output/image-to-editable-ppt/{job-id}/        # 단일 변환 작업 디렉터�
 ├── notes_manifest.json                       # PPTX 페이지 노트 추출 및 매핑 기록
 ├── final/                                    # 최종 출력 디렉터리
 │   ├── {origin}_edited.pptx                  # 최종 편집 가능 PPTX
+│   ├── {origin}_edited.assembly.json         # 기록된 페이지의 조립 매니페스트
 │   ├── validation.json                       # 최종 deck 검증 결과
 │   └── run_summary.json                      # 이번 변환 요약
 └── pages/                                    # 페이지별 재구성 작업 공간

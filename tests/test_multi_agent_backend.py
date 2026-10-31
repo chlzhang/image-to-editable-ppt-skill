@@ -168,7 +168,9 @@ def write_page_outputs(page_dir, text="Valid Page", validation_passed=True, mani
 
 def recorded_fixture(run_dir, page_dir):
     # These finalize-only fixtures bypass recording to exercise final construction.
-    outputs = {path.name: str(path.relative_to(run_dir)) for path in page_dir.iterdir() if path.is_file()}
+    keys = {"manifest.json": "page_manifest", "validation.json": "validation"}
+    outputs = {keys.get(path.name, path.name): str(path.relative_to(run_dir))
+               for path in page_dir.iterdir() if path.is_file()}
     return {
         "validation_passed": True,
         "outputs": outputs,

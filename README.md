@@ -202,6 +202,7 @@ output/image-to-editable-ppt/{job-id}/        # 单次转换任务目录
 ├── notes_manifest.json                       # PPTX 页面备注提取与映射记录
 ├── final/                                    # 最终输出目录
 │   ├── {origin}_edited.pptx                  # 最终可编辑 PPTX
+│   ├── {origin}_edited.assembly.json         # 已验收页面的组装清单
 │   ├── validation.json                       # 最终 deck 校验结果
 │   └── run_summary.json                      # 本次转换摘要
 └── pages/                                    # 按页拆分的重建工作区

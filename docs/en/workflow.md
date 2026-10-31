@@ -43,6 +43,7 @@ output/image-to-editable-ppt/{job-id}/        # Conversion task directory
 ├── notes_manifest.json                       # Speaker-note extraction and mapping records
 ├── final/                                    # Final output directory
 │   ├── {origin}_edited.pptx                  # Final editable PPTX
+│   ├── {origin}_edited.assembly.json         # Assembly manifest for recorded pages
 │   ├── validation.json                       # Final deck validation results
 │   └── run_summary.json                      # Conversion summary
 └── pages/                                    # Per-page reconstruction workspaces

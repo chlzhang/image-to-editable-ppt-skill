@@ -38,6 +38,7 @@ In other agents that support explicit skill selection, select `image-to-editable
 After the task finishes, an isolated output directory at `output/image-to-editable-ppt/{job-id}/` will contain:
 
 - `final/{origin}_edited.pptx`: the final editable PowerPoint file
+- `final/{origin}_edited.assembly.json`: Assembly manifest for recorded pages
 - `final/validation.json`: the final deck validation results
 - `final/run_summary.json`: a summary of the conversion
 - `pages/page_NNN/`: each page's reconstruction workspace, including source images, previews, assets, and intermediate files
